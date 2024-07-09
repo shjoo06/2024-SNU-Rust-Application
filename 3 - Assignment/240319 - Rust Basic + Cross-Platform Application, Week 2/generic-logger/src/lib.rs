@@ -13,12 +13,26 @@ impl Logger for StderrLogger {
     }
 }
 
-fn do_things(logger: &impl Logger) {
+fn do_things(logger: &impl Logger) { // can take any type implementing Logger trait as argument
     logger.log(5, "FYI");
     logger.log(2, "Uhoh");
 }
 
+
 // TODO: Define and implement `VerbosityFilter`.
+struct VerbosityFilter {
+    max_verbosity: u8,
+    inner: StderrLogger,
+}
+
+impl Logger for VerbosityFilter {
+    fn log(&self, verbosity: u8, message: impl Display) {
+        if verbosity <= self.max_verbosity {
+            eprintln!("verbosity={verbosity}: {message}");
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

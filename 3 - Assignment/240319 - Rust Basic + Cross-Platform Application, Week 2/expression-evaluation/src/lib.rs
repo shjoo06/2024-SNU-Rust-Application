@@ -22,7 +22,29 @@ enum Expression {
 }
 
 fn eval(e: Expression) -> Result<i64, String> {
-    todo!()
+    // if Expression has no operation(Op), just return Expression::Value. (match 문 사용)
+    // if Expression::Value: ~
+    match e {
+        Expression::Value(value) => return Ok(value), // base case 
+        Expression::Op {op, left, right}    => { 
+            let left_value = eval(*left)?;    // in case of embedded Expression, evaluate recursively 
+            let right_value = eval(*right)?;
+            match op {
+                // if Expression::Op : 
+                // do Operation on de-referenced left and right value
+                Operation::Add => return Ok(left_value + right_value),    
+                Operation::Sub => return Ok(left_value - right_value),
+                Operation::Mul => return Ok(left_value * right_value),
+                Operation::Div => {
+                    if right_value == 0 {
+                        Err("Division by zero".to_string())
+                    } else {
+                        Ok(left_value / right_value) 
+                    }
+                }
+            }
+        },
+    } 
 }
 
 #[cfg(test)]

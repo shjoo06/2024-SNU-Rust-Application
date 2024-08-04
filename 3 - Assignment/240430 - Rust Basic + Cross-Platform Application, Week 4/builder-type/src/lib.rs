@@ -1,3 +1,6 @@
+// builder pattern: used to construct a complex object step by step
+// PackageBuilder: 거쳐가는 struct: 최종적으로는 Package에 모든 값의 소유권을 넘기고, 본인은 빈껍데기가 되어 사라진다.
+
 #[derive(Debug)]
 enum Language {
     Rust,
@@ -24,17 +27,27 @@ struct Package {
 impl Package {
     // Return a representation of this package as a dependency, for use in
     // building other packages.
-    fn as_dependency(&self) -> Dependency {
-        todo!("1")
+    fn as_dependency(&self) -> Dependency { // Package should not be consumed here
+        Dependency {
+            name: self.name.clone(),
+            version_expression: self.version.clone(),
+        }
     }
 }
 
 // A builder for a Package. Use `build()` to create the `Package` itself.
-struct PackageBuilder(Package);
+struct PackageBuilder(Package); // tuple struct with one field
 
 impl PackageBuilder {
     fn new(name: impl Into<String>) -> Self {
-        todo!("2")
+        PackageBuilder(Package {
+            name: name.into(),
+            version: String::new(),
+            authors: Vec::new(),
+            dependencies: Vec::new(),
+            language: None,
+        })
+    
     }
 
     // Set the package version.
@@ -45,20 +58,23 @@ impl PackageBuilder {
 
     // Set the package authors.
     fn authors(mut self, authors: Vec<String>) -> Self {
-        todo!("3")
+        self.0.authors.extend(authors.into_iter().map(Into::into)); // extend<I>(&mut self, iter: I), I: IntoIterator<Item=T>
+        self
     }
 
     // Add an additional dependency.
     fn dependency(mut self, dependency: Dependency) -> Self {
-        todo!("4")
+        self.0.dependencies.push(dependency);
+        self
     }
 
     // Set the language. If not set, language defaults to None.
     fn language(mut self, language: Language) -> Self {
-        todo!("5")
+        self.0.language = Some(language);
+        self
     }
 
-    fn build(self) -> Package {
+    fn build(self) -> Package { // consumes the builder(self), returns the constructed Package
         self.0
     }
 }

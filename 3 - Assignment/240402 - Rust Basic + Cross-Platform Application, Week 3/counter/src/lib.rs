@@ -1,11 +1,12 @@
 use std::collections::HashMap;
+use std::hash::Hash;
 
 // Counter counts the number of times each value of type T has been seen.
-struct Counter {
-    values: HashMap<u32, u64>,
+struct Counter<T> {
+    values: HashMap<T, u64>,
 }
 
-impl Counter {
+impl<T: Hash+Eq> Counter<T> {
     // Create a new Counter.
     fn new() -> Self {
         Counter {
@@ -14,17 +15,17 @@ impl Counter {
     }
 
     // Count an occurrence of the given value.
-    fn count(&mut self, value: u32) {
+    fn count(&mut self, value: T) {
         if self.values.contains_key(&value) {
-            *self.values.get_mut(&value).unwrap() += 1;
+            *self.values.get_mut(&value).unwrap() += 1; // key에 해당하는 value의 mutable reference를 반환.
         } else {
             self.values.insert(value, 1);
         }
     }
 
     // Return the number of times the given value has been seen.
-    fn times_seen(&self, value: u32) -> u64 {
-        self.values.get(&value).copied().unwrap_or_default()
+    fn times_seen(&self, value: T) -> u64 {
+        self.values.get(&value).copied().unwrap_or_default() // Option::unwrap_or_default(): Some(value)면 value를 반환, None이면 해당 type의 default value를 반환
     }
 }
 

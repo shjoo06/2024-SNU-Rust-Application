@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::{Read, Result};
 
 struct RotDecoder<R: Read> {
     input: R,
@@ -6,6 +6,27 @@ struct RotDecoder<R: Read> {
 }
 
 // Implement the `Read` trait for `RotDecoder`.
+impl<R: Read> Read for RotDecoder<R> {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        let size = self.input.read(buf).unwrap(); // calls read(buf) for type(self.input) internally
+
+        for byte in &mut buf[..size] { // iterate over u8 array (buf)
+            if byte.is_ascii_alphabetic() { 
+                if byte.is_ascii_uppercase() {
+                    let base = b'A';
+                    *byte = base + (*byte - base + self.rot) % 26;
+                } else {
+                    let base = b'a';
+                    *byte = base + (*byte - base + self.rot) % 26;
+                }
+            } 
+        }
+        Ok(size)
+    }
+
+    }
+
+
 
 #[cfg(test)]
 mod tests {
@@ -14,7 +35,7 @@ mod tests {
     #[test]
     fn joke() {
         let mut rot = RotDecoder {
-            input: "Gb trg gb gur bgure fvqr!".as_bytes(),
+            input: "Gb trg gb gur bgure fvqr!".as_bytes(), // String.as_bytes() method: ex) "hello" -> [104, 101, 108, 108, 111]
             rot: 13,
         };
         let mut ret = String::new();

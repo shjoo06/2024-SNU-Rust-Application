@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 // A node in the binary tree.
 #[derive(Debug)]
 struct Node<T: Ord> {
@@ -19,6 +21,62 @@ pub struct BinaryTree<T: Ord> {
 }
 
 // Implement `new`, `insert`, `len`, and `has`.
+impl<T: Ord> BinaryTree<T> {
+    pub fn new() -> Self {
+        BinaryTree {
+            root: Subtree(None),
+        }
+    }
+
+    pub fn insert(&mut self, value: T) {
+        self.root.insert(value);
+    }
+
+    fn len(&self) -> usize {
+        self.root.len()
+    }
+
+    fn has(&self, value: &T) -> bool {
+        self.root.has(value)
+    }
+}
+
+impl<T: Ord> Subtree<T> {
+    fn insert(&mut self, value: T) {
+        match self.0 {
+            None => { 
+                self.0 = Some(Box::new(Node {value, left: Subtree(None), right: Subtree(None)})); 
+            }
+            Some(ref mut node) => {
+                match value.cmp(&node.value) {
+                    Ordering::Less => node.left.insert(value),
+                    Ordering::Greater => node.right.insert(value),
+                    Ordering::Equal => {}, // do nothing if duplicate
+                }
+            }
+        }
+    }
+
+    fn len(&self) -> usize {
+        match &self.0 {
+            None => 0,
+            Some(node) => 1 + node.left.len() + node.right.len()
+        }
+    }
+
+    fn has(&self, value: &T) -> bool {
+        match &self.0 {
+            None => false,
+            Some(node) => {
+                match value.cmp(&node.value) {
+                    Ordering::Equal => return true,
+                    Ordering::Less => node.left.has(value),
+                    Ordering::Greater => node.right.has(value),
+                }
+            }
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

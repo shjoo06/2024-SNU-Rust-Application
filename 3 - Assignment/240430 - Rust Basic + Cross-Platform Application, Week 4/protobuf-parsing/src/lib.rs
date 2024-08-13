@@ -1,3 +1,9 @@
+// define data structure in .proto file
+// save, transmit data as compact binary format (serialize) : more efficient than json -> deserialize 
+
+// WireType can be Varint, Len or I32
+// tag = field number + wiretype (in binary format)
+
 use std::convert::TryFrom;
 use thiserror::Error;
 
@@ -18,7 +24,7 @@ enum Error {
 }
 
 /// A wire type as seen on the wire.
-enum WireType {
+enum WireType { 
     // The Varint WireType indicates the value is a single VARINT.
     Varint,
     //I64,  -- not needed for this exercise
@@ -97,7 +103,7 @@ fn parse_varint(data: &[u8]) -> Result<(u64, &[u8]), Error> {
             return Err(Error::InvalidVarint);
         };
 
-        if b & 0x80 == 0 {
+        if b & 0x80 == 0 { // check continuation bit
             // This is the last byte of the VARINT, so convert it to
             // a u64 and return it.
             let mut value = 0u64;
@@ -124,13 +130,33 @@ fn unpack_tag(tag: u64) -> Result<(u64, WireType), Error> {
 
 // Parse a field, returning the remaining bytes
 fn parse_field(data: &[u8]) -> Result<(Field, &[u8]), Error> {
-    let (tag, remainder) = parse_varint(data)?;
+    let (tag, remainder) = parse_varint(data)?; // tag itself is a Varint
     let (field_num, wire_type) = unpack_tag(tag)?;
-    let (fieldvalue, remainder) = match wire_type {
-        _ => todo!("Based on the wire type, build a Field, consuming as many bytes as necessary."),
-    };
+    match wire_type {
+        WireType::Varint => {
+            let (value, remainder) = parse_varint(remainder)?;
+            Ok((Field {field_num, value: FieldValue::Varint(value)}, remainder))
+        },
+        WireType::Len => { 
+            let (length, remainder) = parse_varint(remainder)?;
+            let length = usize::try_from(length)?;
+            // Error Checking 
+            if remainder.len() < length {
+                return Err(Error::UnexpectedEOF);
+            }
 
-    todo!("Return the field, and any un-consumed bytes.")
+            Ok((Field {field_num, value: FieldValue::Len(&remainder[..length])}, &remainder[length..]))
+        },
+        WireType::I32 => {
+            // Error Checking
+            if remainder.len() < 4 {
+                return Err(Error::UnexpectedEOF);
+            }
+
+            let value = i32::from_le_bytes(remainder[..4].try_into().unwrap());
+            Ok((Field {field_num, value: FieldValue::I32(value)}, &remainder[4..]))
+        }
+    }
 }
 
 // Parse a message in the given data, calling `T::add_field` for each field in
@@ -162,7 +188,33 @@ struct Person<'a> {
     phone: Vec<PhoneNumber<'a>>,
 }
 
-// TODO: Implement ProtoMessage for Person and PhoneNumber.
+impl<'a> ProtoMessage<'a> for PhoneNumber<'a> {
+    fn add_field(&mut self, field: Field<'a>) -> Result<(), Error> {
+        match field.field_num {
+            1 => self.number = field.value.as_string()?,
+            2 => self.type_ = field.value.as_string()?,
+            _ => (),
+        }
+        Ok(())
+    }
+}
+
+impl<'a> ProtoMessage<'a> for Person<'a> {
+    fn add_field(&mut self, field: Field<'a>) -> Result<(), Error> {
+        match field.field_num {
+            1 => self.name = field.value.as_string()?,
+            2 => self.id = field.value.as_u64()?,
+            3 => {
+                let phone_data = field.value.as_bytes()?;
+                let phonenumber: PhoneNumber = parse_message(phone_data).unwrap();
+                self.phone.push(phonenumber);
+            },
+            _ => (),
+        }
+        Ok(())
+    }
+}
+
 
 #[cfg(test)]
 mod test {

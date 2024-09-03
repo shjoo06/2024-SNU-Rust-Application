@@ -1,19 +1,294 @@
 // Type implementing arbitrary-precision decimal arithmetic
-pub struct Decimal {
-    // implement your type here
+use std::ops::Add;
+use std::ops::Sub;
+use std::ops::Mul;
+use std::cmp::Ordering;
+
+#[derive(Debug, Clone, PartialEq, Eq, Copy)]
+enum Sign {
+    Plus,
+    Minus,
 }
 
-impl Decimal {
-    pub fn try_from(input: &str) -> Option<Decimal> {
-        unimplemented!("Create a new decimal with a value of {}", input)
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Decimal {
+    // implement your type here
+    left_digits: Vec<u8>, // array of chars, least significant byte comes first. ex) 1120 -> [0,2,1,1]
+    right_digits: Vec<u8>, // most significant byte comes first. ex) 0.03 -> [0, 3]
+    sign: Sign,
+}
+
+impl Decimal { // decalre methods
+    pub fn try_from(input: &str) -> Option<Decimal> { // input -> Decimal type으로 만들기
+        let mut left_digits = Vec::new();
+        let mut right_digits = Vec::new();
+        let mut decimal_point = None;
+        let mut sign = Sign::Plus;
+        for (index, chr) in input.char_indices() {
+            match chr {
+                '0'..='9' => {
+                    if decimal_point.is_none() {
+                        left_digits.push(chr as u8 - b'0') // bytes 값 자체: 숫자 자체가 됨
+                    } else {
+                        right_digits.push(chr as u8 - b'0')
+                    }
+                },
+                '.' if decimal_point.is_none() => decimal_point = Some(index),
+                '-' if index == 0 => sign = Sign::Minus,
+                '+' if index == 0 => {},
+                _ => return None, // in case of invalid character
+            }
+        }
+        //remove_unnecessary_zeroes
+        left_digits.reverse();
+        //right_digits.reverse();
+        while left_digits.last() == Some(&0) && left_digits.len() > 1 {
+            left_digits.pop();
+        }
+        while right_digits.last() == Some(&0) && !right_digits.is_empty() {
+            right_digits.pop();
+        }
+        
+        Some(Decimal {
+            left_digits,
+            right_digits,
+            sign,
+        })
+    }
+
+    // additional function for comparing magnitude
+    fn abs_cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.left_digits.len().cmp(&other.left_digits.len()) {
+            std::cmp::Ordering::Equal => { // if length of the integer part is the same, compare each digit iteratively
+                for (a, b) in self.left_digits.iter().rev().zip(other.left_digits.iter().rev()) {
+                    match a.cmp(b) {
+                        std::cmp::Ordering::Equal => continue,
+                        ord => return ord,
+                    }
+                }
+                for (a, b) in self.right_digits.iter().zip(other.right_digits.iter()) {
+                    match a.cmp(b) {
+                        std::cmp::Ordering::Equal => continue,
+                        ord => return ord,
+                    }
+                }
+                self.right_digits.len().cmp(&other.right_digits.len())
+            }
+            ord => ord,
+        }
     }
 }
+
+
+impl PartialOrd for Decimal {
+    //먼저, 부호가 같은지 비교: 다르면 +인 쪽이 더 크다.
+    //부호가 같으면, 절댓값을 비교: -인 경우 magnitude가 작은 쪽이 더 크고, +인 경우 magnitude가 큰 쪽이 더 크다.
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match (self.sign, other.sign) {
+            (Sign::Plus, Sign::Minus) => Some(std::cmp::Ordering::Greater),
+            (Sign::Minus, Sign::Plus) => Some(std::cmp::Ordering::Less),
+            _ => {
+                let cmp = self.abs_cmp(other);
+                Some(match self.sign {
+                    Sign::Plus => cmp,
+                    Sign::Minus => cmp.reverse(),
+                })
+            }
+        }
+    }
+}
+
+impl Add for Decimal {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self::Output {
+
+        // perform substraction when signs are different
+        if self.sign != other.sign {
+            return match self.sign {
+                Sign::Plus => self - Decimal { sign: Sign::Plus, ..other },
+                Sign::Minus => other - Decimal { sign: Sign::Plus, ..self },
+            };
+        }
+
+        let mut result_left = Vec::new();
+        let mut result_right = Vec::new();
+        let mut carry_bit = 0;
+
+        // Add fractional parts first
+        for i in (0..std::cmp::max(self.right_digits.len(), other.right_digits.len())).rev() {
+            let sum = carry_bit
+                + self.right_digits.get(i).cloned().unwrap_or(0) 
+                + other.right_digits.get(i).cloned().unwrap_or(0);
+            result_right.insert(0, sum % 10);
+            carry_bit = sum / 10;
+        }
+        // Then add integer parts
+        for i in 0..std::cmp::max(self.left_digits.len(), other.left_digits.len()) {
+            let sum = carry_bit
+                + self.left_digits.get(i).cloned().unwrap_or(0)
+                + other.left_digits.get(i).cloned().unwrap_or(0);
+            result_left.push(sum % 10);
+            carry_bit = sum / 10;
+        }
+        // check the last carry bit
+        if carry_bit > 0 {
+            result_left.push(carry_bit);
+        }
+
+        // remove unnecessary zeroes 
+        while result_left.last() == Some(&0) && result_left.len() > 1 {
+            result_left.pop();
+        }
+        while result_right.last() == Some(&0) && !result_right.is_empty() {
+            result_right.pop();
+        }
+
+        Decimal {
+            left_digits: result_left,
+            right_digits: result_right,
+            sign: self.sign,
+        }
+    }
+}
+
+
+impl Sub for Decimal {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self::Output {
+        if self.sign != other.sign {
+            return self + Decimal {
+                left_digits: other.left_digits,
+                right_digits: other.right_digits,
+                sign: match other.sign {
+                    Sign::Plus => Sign::Minus,
+                    Sign::Minus => Sign::Plus,
+                },
+            };
+        }
+        
+        let abs_cmp = self.abs_cmp(&other);
+        let self_sign = self.sign;  // store self.sign before moving self
+        let (greater, lesser, result_sign) = match abs_cmp {
+            std::cmp::Ordering::Greater => (self, other, self_sign),
+            _ => (other, self, match self_sign {
+                Sign::Plus => Sign::Minus,
+                Sign::Minus => Sign::Plus,
+            }),
+        };
+        let mut result_left = Vec::new();
+        let mut result_right = Vec::new();
+        let mut borrow: i16 = 0;
+
+        // Subtract fractional parts first
+        for i in (0..std::cmp::max(greater.right_digits.len(), lesser.right_digits.len())).rev() {
+            let mut diff = (greater.right_digits.get(i).cloned().unwrap_or(0) as i16)
+                - (lesser.right_digits.get(i).cloned().unwrap_or(0) as i16)
+                - borrow;
+            if diff < 0 {
+                diff += 10;
+                borrow = 1;
+            } else {
+                borrow = 0;
+            }
+            result_right.insert(0, diff as u8);
+        }
+
+        // Then subtract integer parts
+        for i in 0..std::cmp::max(greater.left_digits.len(), lesser.left_digits.len()) {
+            let mut diff = (greater.left_digits.get(i).cloned().unwrap_or(0) as i16) // error occurs when diff < 0 since it's not compatible with u8 type
+                - (lesser.left_digits.get(i).cloned().unwrap_or(0) as i16)
+                - borrow;
+            if diff < 0 {
+                diff += 10;
+                borrow = 1;
+            } else {
+                borrow = 0;
+            }
+            result_left.push(diff as u8);
+        }
+
+        // Remove unnecessary zeroes
+        while result_left.last() == Some(&0) && result_left.len() > 1 {
+            result_left.pop();
+        }
+        while result_right.last() == Some(&0) && !result_right.is_empty() {
+            result_right.pop();
+        }
+
+        Decimal {
+            left_digits: result_left,
+            right_digits: result_right,
+            sign: result_sign,
+        }
+    }
+}
+ 
+impl Mul for Decimal {
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self::Output {
+        // determine sign first
+        let result_sign = match (self.sign, other.sign) {
+            (Sign::Plus, Sign::Plus) | (Sign::Minus, Sign::Minus) => Sign::Plus,
+            (Sign::Plus, Sign::Minus) | (Sign::Minus, Sign::Plus) => Sign::Minus,
+        };
+
+        // determine the decimal point position
+        let right_len = self.right_digits.len() + other.right_digits.len();
+
+        // combine left and right digits 
+        let self_all_digits: Vec<u8> = self.left_digits.iter().rev().cloned().chain(self.right_digits.iter().cloned()).collect();
+        let other_all_digits: Vec<u8> = other.left_digits.iter().rev().cloned().chain(other.right_digits.iter().cloned()).collect();
+        if self_all_digits.len() < other_all_digits.len() {
+            return other * self;
+        } 
+
+        // perform multiplication between two positive integers
+        let mut result = decimal("0.0");
+        let mut dec_temp = Decimal{left_digits: vec![0], right_digits: vec![0], sign:Sign::Plus};
+        for (i, digit_b) in other_all_digits.iter().rev().enumerate() { // pow_10 == i
+            let mut pow_applied: Vec<u8> = self_all_digits.iter().cloned().collect();
+            if i > 0 {
+                for j in 0..i {
+                    pow_applied.push(0); // 자릿수 맞추기
+                }
+            }
+            dec_temp.left_digits = pow_applied.iter().rev().cloned().collect();
+
+            for k in 0..*digit_b {
+                result = result + dec_temp.clone();
+            }
+            }
+        
+        // split left vs. right digits by decimal point position information
+        let mut left_digits: Vec<u8> = result.left_digits[right_len..result.left_digits.len()].iter().cloned().collect(); 
+        let mut right_digits: Vec<u8> = result.left_digits[0..right_len].iter().rev().cloned().collect();
+
+        // Remove unnecessary zeroes
+        while left_digits.last() == Some(&0) && left_digits.len() > 1 {
+            left_digits.pop();
+        }
+        while right_digits.last() == Some(&0) && !right_digits.is_empty() {
+            right_digits.pop();
+        }
+
+        return Decimal {
+            left_digits,
+            right_digits,
+            sign: result_sign,
+            };
+        }
+    }
+
+
 
 // Create a Decimal from a string literal
 //
 // Use only when you _know_ that your value is valid.
 fn decimal(input: &str) -> Decimal {
-    Decimal::try_from(input).expect("That was supposed to be a valid value")
+    Decimal::try_from(input).expect("That was supposed to be a valid value") // .expect(): method to unwrap Option (None이면 panic)
 }
 
 // Some big and precise values we can use for testing. [0] + [1] == [2]
@@ -22,6 +297,7 @@ const BIGS: [&str; 3] = [
     "100000000000000000000000000000000000000000000.00000000000000000000000000000000000000002",
     "200000000000000000000000000000000000000000000.00000000000000000000000000000000000000003",
 ];
+
 
 #[cfg(test)]
 mod tests {
@@ -63,13 +339,13 @@ mod tests {
         assert_eq!(decimal(BIGS[0]) + decimal(BIGS[1]), decimal(BIGS[2]));
         assert_eq!(decimal(BIGS[1]) + decimal(BIGS[0]), decimal(BIGS[2]));
     }
-
+ 
     #[test]
     fn test_sub() {
         assert_eq!(decimal(BIGS[2]) - decimal(BIGS[1]), decimal(BIGS[0]));
         assert_eq!(decimal(BIGS[2]) - decimal(BIGS[0]), decimal(BIGS[1]));
     }
-
+ 
     #[test]
     fn test_mul() {
         for big in BIGS.iter() {
@@ -91,7 +367,7 @@ mod tests {
         assert_eq!(decimal("1.0") - decimal("0.0"), decimal("1.0"));
         assert_eq!(decimal("0.1") - decimal("0.0"), decimal("0.1"));
     }
-
+ 
     #[test]
     fn test_mul_id() {
         assert_eq!(decimal("2.1") * decimal("1.0"), decimal("2.1"));
@@ -113,6 +389,9 @@ mod tests {
     // tests of arbitrary precision behavior
     #[test]
     fn test_add_uneven_position() {
+        println!("{:?}", decimal("0.1"));
+        println!("{:?}", decimal("0.02"));
+        println!("result: {:?}", decimal("0.1") + decimal("0.02"));
         assert_eq!(decimal("0.1") + decimal("0.02"), decimal("0.12"));
     }
 
@@ -178,7 +457,7 @@ mod tests {
         assert_eq!(decimal("+1"), decimal("1"));
         assert_eq!(decimal("+2.0") - decimal("-0002.0"), decimal("4"));
     }
-
+ 
     #[test]
     fn test_multiply_by_negative() {
         assert_eq!(decimal("5") * decimal("-0.2"), decimal("-1"));
@@ -296,3 +575,6 @@ mod tests {
         assert_eq!(decimal("1.1") - decimal("0.1"), decimal("1.0"))
     }
 }
+
+
+

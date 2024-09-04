@@ -140,7 +140,7 @@
     - Callbacks
     - Using Closures Effectively
   - Assignment #6
-- Week 7 (6/25) [[Lecture]](./1%20-%20Lecture/240625%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%207.pdf) [[Assignment]](./3%20-%20Assignment/240625%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%207/)
+- Week 7 (6/25) [[Lecture]](./1%20-%20Lecture/240625%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%207.pdf) [[Assignment]](./3%20-%20Assignment/240625%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%207/) [[Solution]](./4%20-%20Solution/240625%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%207/)
   - Macros
     - Macro Basics
       - Basics of Macro Expansion
@@ -157,22 +157,88 @@
     - Avoiding Syntax Errors During Matching
     - Beyond macro_rules!
   - Assignment #7
-- Week 8 (TBA)
+- Week 8 (7/2) [[Lecture]](./1%20-%20Lecture/240702%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%208.pdf) [[Example]](./2%20-%20Example/240702%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%208/) [[Assignment]](./3%20-%20Assignment/240702%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%208/) [[Solution]](./4%20-%20Solution/240702%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%208/)
   - Concurrency, Part 1
+    - Fork-Join Parallelism
+      - `spawn` and `join`
+      - Error Handling Across Threads
+      - Sharing Immutable Data Across Threads
+      - `Rayon`
+    - Channels
+      - Sending Values
+      - Receiving Values
+      - Running the Pipeline
+      - Channel Features and Performance
+      - Thread Safety: `Send` and `Sync`
+      - Piping Almost Any Iterator to a Channel
+      - Beyond Pipelines
   - Assignment #8
-- Week 9 (TBA)
+- Week 9 (7/9) [[Lecture]](./1%20-%20Lecture/240709%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%209.pdf) [[Assignment]](./3%20-%20Assignment/240709%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%209/)
   - Concurrency, Part 2
+    - Shared Mutable State
+      - What Is a Mutex?
+      - `Mutex<T>`
+      - `mut` and `Mutex`
+      - Why Mutexes Are Not Always a Good Idea
+      - Deadlock
+      - Poisoned Mutexes
+      - Multiconsumer Channels Using Mutexes
+      - Read/Write Locks (`RwLock<T>`)
+      - Condition Variables (`Condvar`)
+      - Atomics
+      - Global Variables
   - Assignment #9
-- Week 10 (TBA)
+- Week 10 (7/16) [[Lecture]](./1%20-%20Lecture/240716%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%2010.pdf)
   - Asynchronous Programming, Part 1
-  - Assignment #10
-- Week 11 (TBA)
+    - From Synchronous to Asynchronous
+      - Futures
+      - Async Functions and Await Expressions
+      - Calling Async Functions from Synchronous Code: `block_on`
+      - Spawning Async Tasks
+      - Async Blocks
+      - Building Async Functions from Async Blocks
+      - Spawning Async Tasks on a Thread Pool
+      - But Does Your Future Implement `Send`?
+      - Long Running Computations: `yield_now` and `spawn_blocking`
+      - Comparing Asynchronous Designs
+      - A Real Asynchronous HTTP Client
+- Week 11 (7/23) [[Lecture]](./1%20-%20Lecture/240723%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%2011.pdf) [[Example]](./2%20-%20Example/240723%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%2011/)
   - Asynchronous Programming, Part 2
-  - Assignment #11
-- Week 12 (TBA)
+    - From Synchronous to Asynchronous
+      - But Does Your Future Implement `Send`?
+      - Long Running Computations: `yield_now` and `spawn_blocking`
+      - Comparing Asynchronous Designs
+      - A Real Asynchronous HTTP Client
+    - An Asynchronous Client and Server
+      - Error and Result Types
+      - The Protocol
+      - Talking User Input: Asynchronous Streams
+      - Sending Packets
+      - Receving Packets: More Asynchronous Streams
+      - The Client's Main Function
+- Week 12 (8/6) [[Lecture]](./1%20-%20Lecture/240806%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%2012.pdf) [[Example]](./2%20-%20Example/240806%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%2012/)
+  - Asynchronous Programming, Part 3
+    - An Asynchronous Client and Server
+      - The Server's Main Function
+      - Handling Chat Connections: Async Mutexes
+      - The Group Table: Synchronous Mutexes
+      - Chat Groups: `tokio`'s Broadcast Channels
+    - Primitive Futures and Executors: When Is a Future Worth Polling Again?
+- Week 13 (8/13) [[Lecture]](./1%20-%20Lecture/240813%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%2013.pdf) [[Example]](./2%20-%20Example/240813%20-%20Rust%20Basic%20+%20Cross-Platform%20Application,%20Week%2013/)
+  - Asynchronous Programming, Part 4
+    - Primitive Futures and Executors: When Is a Future Worth Polling Again?
+      - Invoking Wakers: `spawn_blocking`
+      - Implementing `block_on`
+    - Pinning
+      - The Two Life Stages of a Future
+      - Pinned Pointers
+      - The `Unpin` 
+    - When Is Asynchronous Code Helpful?
+  - Assignment #10
+- Week 14 (TBA)
   - Foreign Function Interface (FFI)
   - Rust and WebAssembly
-  - Assignment #12
+  - Assignment #11
 
 ## References
 

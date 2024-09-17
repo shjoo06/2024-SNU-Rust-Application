@@ -1,14 +1,23 @@
 use std::iter::FromIterator;
+/*
+ptr Box<T> : ptr of data type T
+gets heap-allocated memory like in C, has ownership of the data T
+automatic deallocation when out of scope(: with the notion of ownership, acts like garbage collection but without performance lag)
+ */
+
+struct Node<T> {
+    data: T,
+    next: Option<Box<Node<T>>>,
+}
 
 pub struct SimpleLinkedList<T> {
-    // Delete this field
-    // dummy is needed to avoid unused parameter error during compilation
-    dummy: ::std::marker::PhantomData<T>,
+    head: Option<Box<Node<T>>>,
 }
 
 impl<T> SimpleLinkedList<T> {
     pub fn new() -> Self {
-        unimplemented!()
+        SimpleLinkedList { head: None }
+        // length should be 0 (should be empty)
     }
 
     // You may be wondering why it's necessary to have is_empty()
@@ -17,34 +26,72 @@ impl<T> SimpleLinkedList<T> {
     // whereas is_empty() is almost always cheap.
     // (Also ask yourself whether len() is expensive for SimpleLinkedList)
     pub fn is_empty(&self) -> bool {
-        unimplemented!()
+        // check if head == None
+        match self.head {
+            None => true,
+            _ => false,
+        }
     }
 
     pub fn len(&self) -> usize {
-        unimplemented!()
+        let mut count = 0;
+        let mut curr = &self.head;
+
+        while let Some(ptr) = curr {
+            count += 1;
+            curr = &ptr.next;
+        }
+        count
     }
 
     pub fn push(&mut self, _element: T) {
-        unimplemented!()
+        // push to the front
+        let node = Node {
+            data: _element,
+            next: self.head.take(), // should be none if head was none
+        };
+        self.head = Some(Box::new(node));
     }
 
     pub fn pop(&mut self) -> Option<T> {
-        unimplemented!()
+        // pop from the front
+        // Some(value): .map(|value| {action on value})
+        self.head.take().map(|ptr| {
+            let ret_data = ptr.data;
+            self.head = ptr.next;
+            return ret_data;
+        })
     }
 
     pub fn peek(&self) -> Option<&T> {
-        unimplemented!()
+        self.head.as_ref().map(|ptr| &ptr.data)
     }
 
     #[must_use]
     pub fn rev(self) -> SimpleLinkedList<T> {
-        unimplemented!()
+        let mut new = SimpleLinkedList::new();
+        let mut curr = self.head;
+        let mut prev = None;
+        let mut nxt = None;
+        while let Some(mut node) = curr {
+            nxt = node.next;
+            node.next = prev;
+            prev = Some(node);
+            curr = nxt;
+        }
+        new.head = prev;
+        new
     }
 }
 
 impl<T> FromIterator<T> for SimpleLinkedList<T> {
+    // conversion from an Iterator.
     fn from_iter<I: IntoIterator<Item = T>>(_iter: I) -> Self {
-        unimplemented!()
+        let mut new = SimpleLinkedList::new();
+        for i in _iter {
+            new.push(i);
+        }
+        new
     }
 }
 
@@ -59,8 +106,13 @@ impl<T> FromIterator<T> for SimpleLinkedList<T> {
 // of IntoIterator is that implementing that interface is fairly complicated, and
 // demands more of the student than we expect at this point in the track.
 impl<T> From<SimpleLinkedList<T>> for Vec<T> {
+    // linked list -> Vec
     fn from(mut _linked_list: SimpleLinkedList<T>) -> Vec<T> {
-        unimplemented!()
+        let mut new = Vec::new();
+        while let Some(data) = _linked_list.pop() {
+            new.insert(0, data);
+        }
+        new
     }
 }
 
@@ -153,7 +205,7 @@ mod tests {
     #[test]
     fn test_from_slice() {
         let mut array = vec!["1", "2", "3", "4"];
-        let mut list: SimpleLinkedList<_> = array.drain(..).collect();
+        let mut list: SimpleLinkedList<_> = array.drain(..).collect(); // Removes the specified range from the vector in bulk, returning all removed elements as an iterator.
         assert_eq!(list.pop(), Some("4"));
         assert_eq!(list.pop(), Some("3"));
         assert_eq!(list.pop(), Some("2"));

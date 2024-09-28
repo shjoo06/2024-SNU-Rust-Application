@@ -1,13 +1,18 @@
-use std::marker::PhantomData;
 #[cfg(test)]
 use std::rc::Rc;
+use std::vec::Vec;
+use crate::Error::EmptyBuffer;
+/*
+Rc(reference-counted): read-only ptr, multiple (read-only) ownership possible.
+automatic deallocation when the last Rc pointer is dropped (rc=0)
+Rc<T> only allows shared, immutable access to data T. (use with RefCell for interior mutability)
+ */
 
 pub struct CircularBuffer<T> {
-    // This field is here to make the template compile and not to
-    // complain about unused type parameter 'T'. Once you start
-    // solving the exercise, delete this field and the 'std::marker::PhantomData'
-    // import.
-    field: PhantomData<T>,
+    data: Vec<Option<T>>,
+    read_idx: usize,
+    write_idx: usize,
+    count: usize, // # of items in buffer
 }
 
 #[derive(Debug, PartialEq)]
@@ -16,31 +21,55 @@ pub enum Error {
     FullBuffer,
 }
 
-impl<T> CircularBuffer<T> {
+impl<T: Clone> CircularBuffer<T> {
     pub fn new(capacity: usize) -> Self {
-        unimplemented!(
-            "Construct a new CircularBuffer with the capacity to hold {}.",
-            match capacity {
-                1 => "1 element".to_string(),
-                _ => format!("{} elements", capacity),
-            }
-        );
+        CircularBuffer {
+            data: vec![None; capacity],
+            read_idx: 0,
+            write_idx: 0,
+            count: 0,
+        }
     }
 
     pub fn write(&mut self, _element: T) -> Result<(), Error> {
-        unimplemented!("Write the passed element to the CircularBuffer or return FullBuffer error if CircularBuffer is full.");
+        if self.count == self.data.len() {
+            return Err(Error::FullBuffer);
+        } else {
+            self.data[self.write_idx] = Some(_element);
+            self.write_idx = (self.write_idx + 1) % self.data.len();
+            self.count += 1;
+        }
+        Ok(())
     }
 
     pub fn read(&mut self) -> Result<T, Error> {
-        unimplemented!("Read the oldest element from the CircularBuffer or return EmptyBuffer error if CircularBuffer is empty.");
+        if self.count == 0 {
+            Err(Error::EmptyBuffer)
+        } else {
+            let ret_val = self.data[self.read_idx].take().unwrap();
+            self.read_idx = (self.read_idx + 1) % self.data.len();
+            self.count -= 1;
+            Ok(ret_val)
+        }
     }
 
     pub fn clear(&mut self) {
-        unimplemented!("Clear the CircularBuffer.");
+        for elem in self.data.iter_mut() {
+            *elem = None;
+        }
+        self.read_idx = 0;
+        self.write_idx = 0;
+        self.count = 0;
     }
 
     pub fn overwrite(&mut self, _element: T) {
-        unimplemented!("Write the passed element to the CircularBuffer, overwriting the existing elements if CircularBuffer is full.");
+        if self.count < self.data.len() {
+            self.write(_element).unwrap();
+        } else {
+            self.data[self.read_idx] = Some(_element);
+            self.read_idx = (self.read_idx + 1) % self.data.len();
+            self.write_idx = (self.write_idx + 1) % self.data.len();
+        }
     }
 }
 

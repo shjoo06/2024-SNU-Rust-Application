@@ -6,7 +6,10 @@ fn offset_differences<N>(offset: usize, values: Vec<N>) -> Vec<N>
 where
     N: Copy + std::ops::Sub<Output = N>,
 {
-    unimplemented!()
+    let values_dup: Vec<_> = values.iter().copied().collect();
+    let length = values.len();
+    let ret: Vec<_> = values.into_iter().enumerate().map(|i| values_dup[(i.0+offset)%length] - i.1).collect();
+    ret
 }
 
 #[test]

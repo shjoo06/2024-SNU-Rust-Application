@@ -2,6 +2,11 @@ pub fn luhn(cc_number: &str) -> bool {
     let mut sum = 0;
     let mut double = false;
 
+    let trimmed_cc = cc_number.split_whitespace().collect::<Vec<_>>().join("");
+    if trimmed_cc.chars().any(|c| !c.is_ascii_digit()) || (trimmed_cc.len() < 2) {
+        return false;
+    }
+
     for c in cc_number.chars().rev() {
         if let Some(digit) = c.to_digit(10) {
             if double {

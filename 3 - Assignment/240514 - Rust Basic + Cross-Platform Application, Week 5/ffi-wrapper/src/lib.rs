@@ -1,13 +1,19 @@
 // TODO: remove this when you're done with your implementation.
 #![allow(unused_imports, unused_variables, dead_code)]
 
+// C uses \0 as null terminator to indicate the end of string,
+// while Rust explicitly stores length of the string without using null terminator.
+// Rust -> C: String -> CString(\0-terminated, C-friendly string) -> *mut u8 (raw char array) -> pass to C function ...
+// C -> Rust: C function -> CStr wrapping raw *const u8 -> &str (check if utf-8 encoding)
+
 mod ffi {
     use std::os::raw::{c_char, c_int};
     #[cfg(not(target_os = "macos"))]
     use std::os::raw::{c_long, c_uchar, c_ulong, c_ushort};
 
     // Opaque type. See https://doc.rust-lang.org/nomicon/ffi.html.
-    #[repr(C)]
+    // 'opaque' struct: its contents are not part of the public interface; gives some amount of type safety
+    #[repr(C)] // order, size, and alignment of fields as in C/C++. Any type you expect to pass through an FFI boundary should have repr(C)
     pub struct DIR {
         _data: [u8; 0],
         _marker: core::marker::PhantomData<(*mut u8, core::marker::PhantomPinned)>,
@@ -38,7 +44,8 @@ mod ffi {
         pub d_name: [c_char; 1024],
     }
 
-    extern "C" {
+    extern "C" { // extern "C" makes this function adhere to the C calling convention
+        // declaring function interfaces that Rust code can call foreign code by
         pub fn opendir(s: *const c_char) -> *mut DIR;
 
         #[cfg(not(all(target_os = "macos", target_arch = "x86_64")))]
@@ -70,7 +77,21 @@ impl DirectoryIterator {
     fn new(path: &str) -> Result<DirectoryIterator, String> {
         // Call opendir and return a Ok value if that worked,
         // otherwise return Err with a message.
-        unimplemented!()
+        let path_cstring = CString::new(path).expect("failed to create CString");
+        // let ptr = path_cstring.clone().into_raw(); // in this case, ptr: *mut c_char
+        // https://doc.rust-lang.org/std/ffi/struct.CString.html#extracting-a-raw-pointer-to-the-whole-c-string
+        let ptr = path_cstring.as_ptr(); // read-only pointer (*const c_char)
+        let dir = unsafe { ffi::opendir(ptr) };
+        if dir.is_null() { // opendir error check
+            return Err(format!("Failed to open directory: {}", path));
+        }
+        let entry: Self = DirectoryIterator
+        { path: path_cstring,
+            dir };
+        /* SAFETY: This function is called with a pointer that was obtained
+        by calling CString::into_raw. */
+        // unsafe { let _ = CString::from_raw(ptr); }; // retake pointer to free memory (in case of using .into_raw())
+        Ok(entry)
     }
 }
 
@@ -78,14 +99,26 @@ impl Iterator for DirectoryIterator {
     type Item = OsString;
     fn next(&mut self) -> Option<OsString> {
         // Keep calling readdir until we get a NULL pointer back.
-        unimplemented!()
+        unsafe{
+            let dirent_ptr = ffi::readdir(self.dir);
+            if dirent_ptr.is_null() {
+                None
+            } else {
+                // C function return (raw *const u8) -> CStr -> OsString
+                let ptr = (*dirent_ptr).d_name.as_ptr();
+                let dname = CStr::from_ptr(ptr);
+                let bytes = dname.to_bytes();
+                let a = OsString::from_encoded_bytes_unchecked(Vec::from(bytes));
+                Some(a)
+            }
+        }
     }
 }
 
 impl Drop for DirectoryIterator {
     fn drop(&mut self) {
         // Call closedir as needed.
-        unimplemented!()
+        unsafe { let _ = ffi::closedir(self.dir); }
     }
 }
 
